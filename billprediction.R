@@ -1,0 +1,206 @@
+
+if (require("languageserver")) {
+  require("languageserver")
+} else {
+  install.packages("languageserver", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+install.packages("readr")
+library(readr)
+# Introduction ----
+# There are hundreds of algorithms to choose from.
+# A list of the classification and regression algorithms offered by
+# the caret package can be found here:
+# http://topepo.github.io/caret/available-models.html
+
+# The goal of predictive modelling is to use the most appropriate algorithm to
+# design an accurate model that represents the dataset. Selecting the most
+# appropriate algorithm is a process that involves trial-and-error.
+
+# If the most appropriate algorithm was known beforehand, then it would not be
+# necessary to use Machine Learning. The trial-and-error approach to selecting
+# the most appropriate algorithm involves evaluating a diverse set of
+# algorithms on the dataset, and identifying the algorithms that create
+# accurate models and the ones that do not.
+
+# Once you have a shortlist of the top algorithms, you can then improve their
+# results further by either tuning the algorithm parameters or by combining the
+# predictions of multiple models using ensemble methods.
+
+# STEP 1. Install and Load the Required Packages ----
+## stats ----
+if (require("stats")) {
+  require("stats")
+} else {
+  install.packages("stats", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## mlbench ----
+if (require("mlbench")) {
+  require("mlbench")
+} else {
+  install.packages("mlbench", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## caret ----
+if (require("caret")) {
+  require("caret")
+} else {
+  install.packages("caret", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## MASS ----
+if (require("MASS")) {
+  require("MASS")
+} else {
+  install.packages("MASS", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## glmnet ----
+if (require("glmnet")) {
+  require("glmnet")
+} else {
+  install.packages("glmnet", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## e1071 ----
+if (require("e1071")) {
+  require("e1071")
+} else {
+  install.packages("e1071", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## kernlab ----
+if (require("kernlab")) {
+  require("kernlab")
+} else {
+  install.packages("kernlab", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+## rpart ----
+if (require("rpart")) {
+  require("rpart")
+} else {
+  install.packages("rpart", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+
+
+## plumber ----
+if (require("plumber")) {
+  require("plumber")
+} else {
+  install.packages("plumber", dependencies = TRUE,
+                   repos = "https://cloud.r-project.org")
+}
+# A. Linear Algorithms ----
+## 1. Linear Regression ----
+### 1.a. Linear Regression using Ordinary Least Squares without caret ----
+# The lm() function is in the stats package and creates a linear regression
+# model using ordinary least squares (OLS).
+
+wp<- read_csv("./data/water payments.csv", 
+                        col_types =
+                          cols(
+                            Date=col_skip(),
+                            People=col_skip(),
+                            Showers_a_day=col_integer(),
+                            Washing_Machine_week=col_integer(),
+                            Amount=col_integer()
+                          )
+                        )
+
+#### Load and split the dataset ----
+data(wp)
+
+# Define an 80:20 train:test data split of the dataset.
+train_index <- createDataPartition(wp$Amount,
+                                   p = 0.8,
+                                   list = FALSE)
+wp_train <- wp[train_index, ]
+wp_test <- wp[-train_index, ]
+
+#### Train the model ----
+wp_model_lm <- lm(Amount ~ ., wp_train)
+
+#### Display the model's details ----
+print(wp_model_lm)
+
+#### Make predictions ----
+predictions <- predict(wp_model_lm, wp_test[, 1:3])
+
+#### Display the model's evaluation metrics ----
+##### RMSE ----
+rmse <- sqrt(mean((wp_test$Amount - predictions)^2))
+print(paste("RMSE =", sprintf(rmse, fmt = "%#.4f")))
+
+##### SSR ----
+# SSR is the sum of squared residuals (the sum of squared differences
+# between observed and predicted values)
+ssr <- sum((wp_test$Amount - predictions)^2)
+print(paste("SSR =", sprintf(ssr, fmt = "%#.4f")))
+
+##### SST ----
+# SST is the total sum of squares (the sum of squared differences
+# between observed values and their mean)
+sst <- sum((wp_test$medv - mean(wp_test$Amount))^2)
+print(paste("SST =", sprintf(sst, fmt = "%#.4f")))
+
+##### R Squared ----
+# We then use SSR and SST to compute the value of R squared.
+# The closer the R squared value is to 1, the better the model.
+r_squared <- 1 - (ssr / sst)
+print(paste("R Squared =", sprintf(r_squared, fmt = "%#.4f")))
+
+##### MAE ----
+# MAE is expressed in the same units as the target variable, making it easy to
+# interpret. For example, if you are predicting the amount paid in rent,
+# and the MAE is KES. 10,000, it means, on average, your model's predictions
+# are off by about KES. 10,000.
+absolute_errors <- abs(predictions - wp_test$Amount)
+mae <- mean(absolute_errors)
+print(paste("MAE =", sprintf(mae, fmt = "%#.4f")))
+
+
+
+# Make predictions
+predictions <- predict(wp_model_lm, wp_test)
+print(predictions)
+
+
+# Save and load the model
+saveRDS(wp_model_lm, "./models/waterbill_model.rds")
+waterbill_model <- readRDS("./models/waterbill_model.rds")
+print(waterbill_model)
+
+#Predict using a function
+predict_bill <-function( arg_showers,arg_washingmachine){
+    # Create a data frame using the arguments
+    to_be_predicted <-
+      data.frame(
+       # People =  arg_people,
+        Showers_a_day =  arg_showers,
+       Washing_Machine_week =  arg_washingmachine)
+    
+    # Make a prediction based on the data frame
+    predict(waterbill_model, to_be_predicted)
+    
+  }
+
+
+
+
+
+# We can now call the function predict_bill() instead of calling the
+# predict() function directly
+
+
+predict_bill(2,5)
+
